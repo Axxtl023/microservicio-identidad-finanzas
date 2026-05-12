@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Registro transversal de auditoría de acciones sobre el sistema
+model auditoria {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id_usuario String?   @db.Uuid
+  accion     String    @db.VarChar(100)
+  tabla      String    @db.VarChar(100)
+  detalles   String?
+  ip         String?   @db.VarChar(45)
+  fecha      DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+/// Perfil de cliente vinculado a un usuario por email
+model clientes {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre         String    @db.VarChar(100)
+  apellido       String    @db.VarChar(100)
+  email          String    @unique @db.VarChar(255)
+  identificacion String?   @unique @db.VarChar(20)
+  telefono       String?   @db.VarChar(20)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+/// Líneas de detalle de una factura — referencia id_producto como UUID simple (sin FK a productos)
+model detalles_factura {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id_factura          String   @db.Uuid
+  id_producto_externo String   @db.Uuid
+  cantidad            Int
+  precio_unitario     Decimal  @db.Decimal(10, 2)
+  subtotal            Decimal  @db.Decimal(10, 2)
+  facturas            facturas @relation(fields: [id_factura], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// Cabecera de factura — id_reserva e id_cliente son UUID simples sin FK externas
+model facturas {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id_reserva       String?            @db.Uuid
+  numero_factura   String             @unique @db.VarChar(50)
+  total            Decimal            @db.Decimal(10, 2)
+  fecha_emision    DateTime?          @default(now()) @db.Timestamptz(6)
+  detalles_factura detalles_factura[]
+}
+
+/// Métodos de pago disponibles (Efectivo, Tarjeta, Transferencia, etc.)
+model metodos_pago {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre     String    @unique @db.VarChar(50)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  pagos      pagos[]
+}
+
+/// Registro de pago asociado a una reserva — id_reserva es UUID simple sin FK
+model pagos {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id_reserva     String?       @db.Uuid
+  id_metodo_pago String?       @db.Uuid
+  monto          Decimal       @db.Decimal(10, 2)
+  fecha_pago     DateTime?     @default(now()) @db.Timestamptz(6)
+  metodos_pago   metodos_pago? @relation(fields: [id_metodo_pago], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// Roles del sistema (ADMIN, CLIENTE)
+model roles {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre      String     @unique @db.VarChar(50)
+  descripcion String?
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  usuarios    usuarios[]
+}
+
+/// Cuenta de acceso al sistema
+model usuarios {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String    @unique @db.VarChar(255)
+  password_hash String
+  id_rol        String?   @db.Uuid
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  roles         roles?    @relation(fields: [id_rol], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
