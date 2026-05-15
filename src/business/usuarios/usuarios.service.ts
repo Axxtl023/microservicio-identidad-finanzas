@@ -1,9 +1,12 @@
 import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import type { IUsuariosService } from './interfaces/i-usuarios.service';
 import type { IUnitOfWork } from '../../data-management/interfaces/i-unit-of-work';
 import { IUNIT_OF_WORK } from '../../data-management/interfaces/i-unit-of-work';
 import { UsuarioDataMapper } from '../../data-management/mappers/usuario.data-mapper';
 import type { CreateUsuarioDto, UpdateUsuarioDto, UsuarioResponseDto } from './dtos/usuario.dto';
+
+const SALT_ROUNDS = 10;
 
 const toDto = (e: ReturnType<typeof UsuarioDataMapper.toDataModel>): UsuarioResponseDto => ({
   id: e.id,
@@ -52,10 +55,11 @@ export class UsuariosService implements IUsuariosService {
       idRol = rol.id;
     }
 
-    // Crear usuario y cliente de forma atómica
+    const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+
     const { usuario } = await this.unitOfWork.registerUsuarioConCliente({
       email: dto.email,
-      passwordHash: dto.password,
+      passwordHash,
       nombre: dto.nombre?.trim() || 'Nuevo',
       apellido: dto.apellido?.trim() || 'Usuario',
     });
@@ -87,9 +91,11 @@ export class UsuariosService implements IUsuariosService {
       idRol = rol.id;
     }
 
+    const passwordHash = dto.password ? await bcrypt.hash(dto.password, SALT_ROUNDS) : undefined;
+
     const entity = await this.unitOfWork.usuariosRepository.update(id, {
       email: dto.email,
-      passwordHash: dto.password,
+      passwordHash,
       idRol,
     });
     return toDto(UsuarioDataMapper.toDataModel(entity));

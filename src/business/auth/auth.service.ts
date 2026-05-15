@@ -1,5 +1,6 @@
 import { Injectable, Inject, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 import type { IAuthService } from './interfaces/i-auth.service';
 import type { IUnitOfWork } from '../../data-management/interfaces/i-unit-of-work';
 import { IUNIT_OF_WORK } from '../../data-management/interfaces/i-unit-of-work';
@@ -8,6 +9,8 @@ import { LoginRequestDto } from './dtos/login-request.dto';
 import { LoginResponseDto } from './dtos/login-response.dto';
 import { RegisterRequestDto } from './dtos/register-request.dto';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
+
+const SALT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -24,8 +27,8 @@ export class AuthService implements IAuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    // V1: comparación en texto plano
-    if (entity.password_hash !== request.password) {
+    const passwordValid = await bcrypt.compare(request.password, entity.password_hash);
+    if (!passwordValid) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
@@ -51,9 +54,11 @@ export class AuthService implements IAuthService {
       throw new ConflictException(`El email ${dto.email} ya está registrado`);
     }
 
+    const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+
     const { usuario } = await this.unitOfWork.registerUsuarioConCliente({
       email: dto.email,
-      passwordHash: dto.password,
+      passwordHash,
       nombre: dto.nombre,
       apellido: dto.apellido,
       identificacion: dto.identificacion,
