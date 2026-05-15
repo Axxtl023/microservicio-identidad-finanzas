@@ -5,6 +5,7 @@ import {
   CallHandler,
   Inject,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import type { IAuditoriaService } from '../interfaces/i-auditoria.service';
@@ -23,6 +24,7 @@ export class AuditoriaInterceptor implements NestInterceptor {
   constructor(
     @Inject(IAUDITORIA_SERVICE)
     private readonly auditoriaService: IAuditoriaService,
+    private readonly jwtService: JwtService,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
@@ -32,6 +34,7 @@ export class AuditoriaInterceptor implements NestInterceptor {
       body: unknown;
       ip: string;
       user?: JwtPayload;
+      headers: Record<string, string | undefined>;
     }>();
 
     const accion = METHOD_ACCION[request.method];
@@ -40,9 +43,10 @@ export class AuditoriaInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(() => {
         const tabla = this.extractTabla(request.url);
+        const idUsuario = this.extractUserId(request);
         void this.auditoriaService
           .log({
-            idUsuario: request.user?.sub ?? null,
+            idUsuario,
             accion,
             tabla,
             valorNuevo: request.method !== 'DELETE' ? request.body : undefined,
@@ -51,6 +55,23 @@ export class AuditoriaInterceptor implements NestInterceptor {
           .catch(() => {});
       }),
     );
+  }
+
+  private extractUserId(request: {
+    user?: JwtPayload;
+    headers: Record<string, string | undefined>;
+  }): string | null {
+    if (request.user?.sub) return request.user.sub;
+    const auth = request.headers['authorization'];
+    if (auth?.startsWith('Bearer ')) {
+      try {
+        const payload = this.jwtService.decode(auth.slice(7)) as JwtPayload | null;
+        return payload?.sub ?? null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
   }
 
   private extractTabla(url: string): string {
