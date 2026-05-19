@@ -50,6 +50,7 @@ import { ClientesController } from './api/controllers/v1/ClientesController';
 import { FacturasController } from './api/controllers/v1/FacturasController';
 import { MetodosPagoController } from './api/controllers/v1/MetodosPagoController';
 import { AuditoriaController } from './api/controllers/v1/AuditoriaController';
+import { FinanceGrpcController } from './api/controllers/grpc/FinanceGrpcController';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { AuditoriaController } from './api/controllers/v1/AuditoriaController';
     FacturasController,
     MetodosPagoController,
     AuditoriaController,
+    FinanceGrpcController,
   ],
   providers: [
     PrismaService,
