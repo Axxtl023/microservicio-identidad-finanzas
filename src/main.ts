@@ -52,7 +52,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT ?? 3002;
+  const port = process.env.PORT ?? 3001;
   await app.startAllMicroservices();
   await app.listen(port, '0.0.0.0');
   console.log(`gRPC FinanceService escuchando en el puerto ${process.env.GRPC_PORT || 5002}`);
