@@ -6,6 +6,10 @@ import type { IPagosRepository, PagoPrisma, CreatePagoInput } from './interfaces
 export class PagosRepository implements IPagosRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findById(id: string): Promise<PagoPrisma | null> {
+    return this.prisma.pagos.findUnique({ where: { id } });
+  }
+
   async findByReservaId(idReserva: string): Promise<PagoPrisma | null> {
     return this.prisma.pagos.findFirst({ where: { id_reserva: idReserva } });
   }
