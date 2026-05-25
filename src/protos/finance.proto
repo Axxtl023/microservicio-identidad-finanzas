@@ -56,16 +56,21 @@ message RefundPaymentResponse {
   int64 amount_cents = 4;
 }
 
+// Permite a reservas-booking resolver el pago asociado a una reserva
+// para iniciar el refund en una cancelación post-checkout.
+message GetPaymentByReservaIdRequest {
+  string reserva_id = 1;
+}
+
+message GetPaymentByReservaIdResponse {
+  string id_pago = 1;
+  string status = 2;
+  int64 amount_cents = 3;
+}
+
 service FinanceService {
   rpc ProcessPayment(ProcessPaymentRequest) returns (ProcessPaymentResponse);
   rpc IssueInvoice(IssueInvoiceRequest) returns (IssueInvoiceResponse);
-  // TODO(pendiente): RefundPayment no está implementado en esta iteración.
-  // Para habilitarlo se requiere una migración de schema Prisma:
-  //   - Opción A: agregar columna `status` (VARCHAR) al modelo `pagos`
-  //     para poder marcar un pago como REEMBOLSADO.
-  //   - Opción B: crear un modelo `reembolsos` con FK a `pagos`.
-  // Se mantiene en el contrato porque microservicio-reservas-booking
-  // lo invoca como paso de compensación en la saga de checkout.
-  // Hasta que se implemente, el servidor devuelve gRPC UNIMPLEMENTED.
   rpc RefundPayment(RefundPaymentRequest) returns (RefundPaymentResponse);
+  rpc GetPaymentByReservaId(GetPaymentByReservaIdRequest) returns (GetPaymentByReservaIdResponse);
 }

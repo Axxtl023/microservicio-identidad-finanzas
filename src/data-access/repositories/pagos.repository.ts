@@ -23,4 +23,15 @@ export class PagosRepository implements IPagosRepository {
       },
     });
   }
+
+  async markAsRefunded(id: string, motivo: string): Promise<PagoPrisma> {
+    return this.prisma.pagos.update({
+      where: { id },
+      data: {
+        status: 'REEMBOLSADO',
+        fecha_reembolso: new Date(),
+        motivo_reembolso: motivo.slice(0, 255),
+      } as never,
+    });
+  }
 }

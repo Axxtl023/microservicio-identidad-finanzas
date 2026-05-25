@@ -43,6 +43,10 @@ interface RefundPaymentRequest {
   reason?: string;
 }
 
+interface GetPaymentByReservaIdRequest {
+  reservaId?: string;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Constantes
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -233,22 +237,82 @@ export class FinanceGrpcController {
   }
 
   // ═════════════════════════════════════════════════════════════════════════════
-  // RefundPayment — UNIMPLEMENTED
+  // RefundPayment
   // ═════════════════════════════════════════════════════════════════════════════
   //
-  // No implementado en esta iteración. Requiere migración de schema:
-  //   - Agregar columna `status` al modelo `pagos`, o
-  //   - Crear modelo `reembolsos` con FK a `pagos`.
-  // Se mantiene el RPC en el contrato para la saga de compensación
-  // de microservicio-reservas-booking.
+  // Marca el pago como REEMBOLSADO. Idempotente: si ya está REEMBOLSADO,
+  // devuelve el estado actual sin volver a procesar.
+  //
+  // Como esta fase es simulada, no hay gateway de pago externo — el "refund"
+  // es solo un cambio de estado en la BD + el `motivo_reembolso` para audit.
   //
   @GrpcMethod('FinanceService', 'RefundPayment')
-  async refundPayment(_request: RefundPaymentRequest) {
-    this.logger.warn('RefundPayment invocado — no implementado en esta iteración');
-    throw this.rpcError(
-      status.UNIMPLEMENTED,
-      'RefundPayment no está implementado. Requiere migración de schema (columna status en pagos o tabla reembolsos).',
+  async refundPayment(request: RefundPaymentRequest) {
+    this.logger.log(
+      `RefundPayment idPago=${request.idPago ?? ''} reason=${request.reason ?? ''} idempotencyKey=${request.idempotencyKey ?? ''}`,
     );
+
+    try {
+      this.assertRequired(request.idempotencyKey, 'idempotency_key');
+      this.assertRequired(request.idPago, 'id_pago');
+
+      const pago = await this.pagosRepository.findById(request.idPago!);
+      if (!pago) {
+        throw this.rpcError(status.NOT_FOUND, `Pago con id ${request.idPago} no encontrado`);
+      }
+
+      // Idempotencia: si ya está REEMBOLSADO devolvemos el actual.
+      const pagoStatus = (pago as { status?: string }).status ?? 'APROBADO';
+      if (pagoStatus === 'REEMBOLSADO') {
+        this.logger.log(`Pago ${pago.id} ya estaba REEMBOLSADO — devolviendo estado actual`);
+        return {
+          idReembolso: pago.id,
+          idPago: pago.id,
+          status: 'REEMBOLSADO',
+          amountCents: this.decimalToCents(pago.monto),
+        };
+      }
+
+      const reason = (request.reason ?? '').trim() || 'USER_CANCELLATION';
+      const updated = await this.pagosRepository.markAsRefunded(pago.id, reason);
+      this.logger.log(`Pago ${pago.id} marcado como REEMBOLSADO (motivo: ${reason})`);
+
+      return {
+        idReembolso: updated.id,
+        idPago: updated.id,
+        status: 'REEMBOLSADO',
+        amountCents: this.decimalToCents(updated.monto),
+      };
+    } catch (err) {
+      throw this.toRpcException(err);
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // GetPaymentByReservaId
+  // ═════════════════════════════════════════════════════════════════════════════
+  //
+  // Permite a reservas-booking resolver el pago asociado a una reserva
+  // para iniciar el refund en cancelaciones post-checkout, sin necesidad
+  // de persistir id_pago en la tabla reservas.
+  //
+  @GrpcMethod('FinanceService', 'GetPaymentByReservaId')
+  async getPaymentByReservaId(request: GetPaymentByReservaIdRequest) {
+    this.logger.log(`GetPaymentByReservaId reservaId=${request.reservaId ?? ''}`);
+    try {
+      this.assertRequired(request.reservaId, 'reserva_id');
+      const pago = await this.pagosRepository.findByReservaId(request.reservaId!);
+      if (!pago) {
+        throw this.rpcError(status.NOT_FOUND, `Sin pago asociado a reserva ${request.reservaId}`);
+      }
+      return {
+        idPago: pago.id,
+        status: (pago as { status?: string }).status ?? 'APROBADO',
+        amountCents: this.decimalToCents(pago.monto),
+      };
+    } catch (err) {
+      throw this.toRpcException(err);
+    }
   }
 
   // ═════════════════════════════════════════════════════════════════════════════
