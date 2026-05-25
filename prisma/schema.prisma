@@ -58,12 +58,16 @@ model metodos_pago {
 }
 
 /// Registro de pago asociado a una reserva — id_reserva es UUID simple sin FK
+/// Status: APROBADO (default tras ProcessPayment) | REEMBOLSADO (tras RefundPayment)
 model pagos {
   id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   id_reserva     String?       @db.Uuid
   id_metodo_pago String?       @db.Uuid
   monto          Decimal       @db.Decimal(10, 2)
+  status         String        @default("APROBADO") @db.VarChar(20)
   fecha_pago     DateTime?     @default(now()) @db.Timestamptz(6)
+  fecha_reembolso DateTime?    @db.Timestamptz(6)
+  motivo_reembolso String?     @db.VarChar(255)
   metodos_pago   metodos_pago? @relation(fields: [id_metodo_pago], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 

@@ -12,6 +12,7 @@ export interface IPagosRepository {
   findById(id: string): Promise<PagoPrisma | null>;
   findByReservaId(idReserva: string): Promise<PagoPrisma | null>;
   create(data: CreatePagoInput): Promise<PagoPrisma>;
+  markAsRefunded(id: string, motivo: string): Promise<PagoPrisma>;
 }
 
 export const IPAGOS_REPOSITORY = 'IPAGOS_REPOSITORY';
