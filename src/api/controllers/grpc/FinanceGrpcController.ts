@@ -326,17 +326,23 @@ export class FinanceGrpcController {
     }
   }
 
-  /** Convierte un valor numérico (puede llegar como string desde proto) */
-  private toNumber(value: number | string | undefined, fieldName: string): number {
+  /** Convierte un valor numérico (puede llegar como string o Long desde proto) */
+  private toNumber(value: any, fieldName: string): number {
     if (value === undefined || value === null) {
       throw this.invalidArgument(`${fieldName} es requerido`);
     }
-    const num = typeof value === 'string' ? Number(value) : value;
+    let num: number;
+    if (typeof value === 'object' && value !== null) {
+      num = typeof value.toNumber === 'function' ? value.toNumber() : Number(value);
+    } else {
+      num = typeof value === 'string' ? Number(value) : value;
+    }
     if (!Number.isFinite(num)) {
       throw this.invalidArgument(`${fieldName} debe ser un número válido`);
     }
     return num;
   }
+
 
   /** Convierte un Decimal de Prisma a centavos enteros */
   private decimalToCents(decimal: unknown): number {
