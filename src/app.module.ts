@@ -1,7 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { EventBusModule } from './business/event-bus/event-bus.module';
+
+import { HealthController } from './api/controllers/v1/HealthController';
+import { MetricsController } from './api/controllers/v1/MetricsController';
+import { MetricsService } from './common/observability/metrics.service';
+import { StructuredLogger } from './common/observability/structured-logger';
+import { TraceMiddleware } from './common/observability/trace.middleware';
 
 import { PrismaService } from './common/prisma/prisma.service';
 
@@ -62,6 +69,8 @@ import { FinanceGrpcController } from './api/controllers/grpc/FinanceGrpcControl
         signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN ?? '1h') as any },
       }),
     }),
+    // ── V2: Event Bus (RabbitMQ) — Outbox, Inbox, Consumers ────────────────
+    EventBusModule,
   ],
   controllers: [
     AuthController,
@@ -71,6 +80,8 @@ import { FinanceGrpcController } from './api/controllers/grpc/FinanceGrpcControl
     MetodosPagoController,
     AuditoriaController,
     FinanceGrpcController,
+    HealthController,
+    MetricsController,
   ],
   providers: [
     PrismaService,
@@ -116,6 +127,13 @@ import { FinanceGrpcController } from './api/controllers/grpc/FinanceGrpcControl
 
     // ── Global Interceptors ───────────────────────────────────────────────────
     { provide: APP_INTERCEPTOR, useClass: AuditoriaInterceptor },
+
+    // ── Observability ──────────────────────────────────────────────────────────
+    StructuredLogger,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(TraceMiddleware).forRoutes('*');
+  }
+}

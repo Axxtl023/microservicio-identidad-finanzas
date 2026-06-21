@@ -1,0 +1,1 @@
+-- Initial baseline migration (empty since DB already exists)

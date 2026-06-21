@@ -89,3 +89,28 @@ model usuarios {
   created_at    DateTime? @default(now()) @db.Timestamptz(6)
   roles         roles?    @relation(fields: [id_rol], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
+
+model event_outbox {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_id       String    @unique @db.Uuid
+  event_type     String    @db.VarChar(100)
+  exchange       String    @db.VarChar(100)
+  routing_key    String    @db.VarChar(100)
+  payload        Json      @db.JsonB
+  correlation_id String?   @db.Uuid
+  aggregate_id   String?   @db.VarChar(100)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  published_at   DateTime? @db.Timestamptz(6)
+  attempts       Int       @default(0)
+  last_error     String?
+
+  @@index([created_at], map: "idx_event_outbox_unpublished")
+  @@index([correlation_id], map: "idx_event_outbox_correlation")
+  @@index([aggregate_id], map: "idx_event_outbox_aggregate")
+}
+
+model processed_messages {
+  event_id     String   @id @db.Uuid
+  event_type   String   @db.VarChar(100)
+  processed_at DateTime @default(now()) @db.Timestamptz(6)
+}
