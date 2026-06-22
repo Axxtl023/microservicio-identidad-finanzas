@@ -12,8 +12,6 @@ import { ProcessPaymentConsumer } from './consumers/process-payment.consumer';
 import { RefundPaymentConsumer } from './consumers/refund-payment.consumer';
 import { IssueInvoiceConsumer } from './consumers/issue-invoice.consumer';
 
-import { FacturacionService } from '../facturacion/facturacion.service';
-import { IFACTURACION_SERVICE } from '../facturacion/interfaces/i-facturacion.service';
 import { FacturasRepository } from '../../data-access/repositories/facturas.repository';
 import { IFACTURAS_REPOSITORY } from '../../data-access/repositories/interfaces/i-facturas.repository';
 import { DetallesFacturaRepository } from '../../data-access/repositories/detalles-factura.repository';
@@ -22,8 +20,6 @@ import { PagosRepository } from '../../data-access/repositories/pagos.repository
 import { IPAGOS_REPOSITORY } from '../../data-access/repositories/interfaces/i-pagos.repository';
 import { MetodosPagoRepository } from '../../data-access/repositories/metodos-pago.repository';
 import { IMETODOS_PAGO_REPOSITORY } from '../../data-access/repositories/interfaces/i-metodos-pago.repository';
-import { UnitOfWork } from '../../data-management/unit-of-work';
-import { IUNIT_OF_WORK } from '../../data-management/interfaces/i-unit-of-work';
 
 @Module({
   imports: [
@@ -63,12 +59,6 @@ import { IUNIT_OF_WORK } from '../../data-management/interfaces/i-unit-of-work';
     { provide: IFACTURAS_REPOSITORY, useExisting: FacturasRepository },
     DetallesFacturaRepository,
     { provide: IDETALLES_FACTURA_REPOSITORY, useExisting: DetallesFacturaRepository },
-    UnitOfWork,
-    { provide: IUNIT_OF_WORK, useExisting: UnitOfWork },
-
-    // ── Business Services (needed by consumers) ───────────────────────────────
-    FacturacionService,
-    { provide: IFACTURACION_SERVICE, useExisting: FacturacionService },
 
     // ── Consumers ─────────────────────────────────────────────────────────────
     ProcessPaymentConsumer,

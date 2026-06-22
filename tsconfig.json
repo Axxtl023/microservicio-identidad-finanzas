@@ -22,7 +22,6 @@
       "@business/*": ["business/*"],
       "@api/*": ["api/*"]
     },
-    "types": ["node"],
     "skipLibCheck": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
